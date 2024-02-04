@@ -19,6 +19,7 @@ import re
 import json
 import types
 import importlib.machinery
+import base64
 # Create LOGGER
 import logging
 import saspy
@@ -27,7 +28,7 @@ from typing import Tuple, Union
 from IPython.display import HTML
 from metakernel import MetaKernel
 from .version import __version__
-
+from bs4 import BeautifulSoup as BS
 
 # create a LOGGER to output messages to the Jupyter CONSOLE
 LOGGER = logging.getLogger(__name__)
@@ -38,6 +39,42 @@ LOGGER.addHandler(CONSOLE)
 
 LOGGER.debug("sanity check")
 
+class SASOutput(object):
+    def __init__(self, data):
+        self.data = data
+
+    def __repr__(self):
+        try:
+            soup = BS(self.data)
+            return soup.get_text()
+        except:
+            return HTML(self.data)
+
+    def _repr_html_(self):
+        d2f(self.data)
+        #return None
+        return self.data
+
+    def _repr_png_(self):
+        d = self.data
+        try:
+            soup = BS(d, 'html.parser')
+            img_tag = soup.find('img')
+            base64_data = img_tag['src'].split(',')[1]
+            return base64_data
+        except:
+            return None
+
+    def _repr_latex_(self):
+        start_marker = r'\\documentclass\[10pt\]{article}'
+        end_marker = r'\\end{document}'
+
+        match = re.search(f'{start_marker}(.*?){end_marker}', self.data, re.DOTALL)
+        if match:
+            latex_output = match.group()
+            return latex_output
+        else:
+            return None
 
 class SASKernel(MetaKernel):
     """
@@ -167,7 +204,7 @@ class SASKernel(MetaKernel):
 
         # no error and LST output
         if error_count == 0 and len(output) > self.lst_len:
-            return self.Display(HTML(output))
+            return self.Display(SASOutput(output))
 
         elif error_count > 0 and len(output) > self.lst_len:  # errors and LST
             # filter log to lines around first error
