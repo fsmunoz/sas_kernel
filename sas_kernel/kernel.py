@@ -51,8 +51,6 @@ class SASOutput(object):
             return HTML(self.data)
 
     def _repr_html_(self):
-        d2f(self.data)
-        #return None
         return self.data
 
     def _repr_png_(self):
